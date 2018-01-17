@@ -13,7 +13,7 @@ let greeting = Matcher::from("\"hello\" | \"hi\"");
 assert!(greeting.query("hi there!"));
 assert!(greeting.query("hello i am here"));
 
-let greet2 = Matcher::from("(\"hello\" | \"hi\" ) \"there\");
+let greet2 = Matcher::from("(\"hello\" | \"hi\" ) \"there\"");
 assert!(greet2.query("hello there!"));
 assert!(greet2.query("hi there!"));
 ```
