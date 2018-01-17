@@ -8,6 +8,7 @@ pub enum Node
     Leaf(String)
 }
 
+#[derive(Debug)]
 enum Token
 {
     AND,
@@ -18,9 +19,9 @@ enum Token
     Keyword(String),
 }
 
-pub fn from(s: String) -> Node
+pub fn from(s: &str) -> Node
 {
-    return build_bquery(tokenise_query(s));
+    return build_bquery(tokenise_query(s.to_string()));
 }
 
 fn tokenise_query(query: String) -> VecDeque<Token>
@@ -64,8 +65,8 @@ fn tokenise_query(query: String) -> VecDeque<Token>
                 '&' => tokens.push_back(Token::AND),
                 '|' => tokens.push_back(Token::OR),
                 '!' => tokens.push_back(Token::NOT),
-                '(' => tokens.push_back(Token::RParen),
-                ')' => tokens.push_back(Token::LParen),
+                '(' => tokens.push_back(Token::LParen),
+                ')' => tokens.push_back(Token::RParen),
 
                 // skip whitespace
                 ' ' | '\t' | '\n' | '\r' => continue,
@@ -148,7 +149,7 @@ fn build_factor(tokens: &mut VecDeque<Token>) -> Node
                 }
             },
 
-            _ => panic!("ERROR! Unexpected character"),
+            _ => panic!("ERROR! Unexpected token {:?}", t),
         }
     }
 

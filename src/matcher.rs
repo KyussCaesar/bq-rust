@@ -7,7 +7,7 @@ pub struct Matcher
 
 impl Matcher
 {
-    pub fn from(s: String) -> Self
+    pub fn from(s: &str) -> Self
     {
         Matcher
         {
@@ -15,13 +15,13 @@ impl Matcher
         }
     }
 
-    pub fn query(&self, s: String) -> bool
+    pub fn query(&self, s: &str) -> bool
     {
-        return match_bquery(&self.query, &s)
+        return match_bquery(&self.query, s)
     }
 }
 
-fn match_bquery(query: &parser::Node, s: &String) -> bool
+fn match_bquery(query: &parser::Node, s: &str) -> bool
 {
     use parser::Node::*;
     match query
@@ -29,17 +29,16 @@ fn match_bquery(query: &parser::Node, s: &String) -> bool
         &AND(ref a, ref b) => return match_bquery(&*a, s) && match_bquery(&*b, s),
         &OR(ref a, ref b) => return match_bquery(&*a, s) || match_bquery(&*b, s),
         &NOT(ref a) => return !match_bquery(&*a, s),
-        &Leaf(ref keyword) => return kmp(keyword, &s),
+        &Leaf(ref keyword) => return kmp(keyword, s),
     }
 }
 
 // implementation of knuth-morris-pratt
 // returns true if s1 is in s2
-fn kmp(s1: &String, s2: &String) -> bool
+fn kmp(s1: &str, s2: &str) -> bool
 {
-    println!("searching for keyword {}", s1);
-    let s1 = s1.clone().into_bytes();
-    let s2 = s2.clone().into_bytes();
+    let s1 = s1.to_string().into_bytes();
+    let s2 = s2.to_string().into_bytes();
 
     let table = kmp_table(&s1);
 
@@ -107,11 +106,23 @@ mod tests
 {
     use super::*;
 
+    fn print_on_failure(m: &Matcher, s: &str)
+    {
+        assert!(m.query(s), "was trying to match the string '{}'", s);
+    }
+
     #[test]
     fn test()
     {
-        let iphonex = Matcher::from("\"iphone\" | \"i phone\"".to_string());
-        assert!(iphonex.query("I love my iphone!".to_string()));
-        assert!(iphonex.query("I love my i phone!".to_string()));
+        let iphonex = Matcher::from("\"iphone\" | \"i phone\"");
+        print_on_failure(&iphonex, "I love my new iphone!");
+    }
+
+    #[test]
+    fn groups()
+    {
+        let greeting = Matcher::from("(\"hello\" | \"hi\") & \"there\")");
+        print_on_failure(&greeting, "hi there, my name is Kyuss Caesar");
+        print_on_failure(&greeting, "hello there, this should also be a greeting");
     }
 }
