@@ -1,6 +1,6 @@
 # bq-rust
 
-This is library for applying a boolean query to text.
+This is a library for applying a boolean query to text.
 
 ## Example:
 
@@ -34,7 +34,7 @@ Uses an implementation of the Knuth-Morris-Pratt algorithm (that I shamelessly c
 
 ## Syntax
 
-## In pseudo-BNF language:
+### In pseudo-BNF language:
 
 ```
 query:
@@ -58,7 +58,10 @@ Use '&' for AND, '|' for OR, '!' for NOT. NOT has highest precedence, then AND, 
 You can use '(' and ')' for grouping.
 
 ```
-let complexq = Matcher::from("(\"this\" | \"that\" &
+let complexq = Matcher::from(" \"that\" & ( \"this\" | \"these\" ) & \"those\" ");
+assert!(complexq.query("that and this with those"));
+assert!(complexq.query("that and these with those"));
+```
 
 ## Issues
 
