@@ -9,7 +9,7 @@ extern crate bq_rust;
 
 use bq_rust::Matcher;
 
-let greeting = Matcher::from("\"hello\" | \"hi\");
+let greeting = Matcher::from("\"hello\" | \"hi\"");
 assert!(greeting.query("hi there!"));
 assert!(greeting.query("hello i am here"));
 
