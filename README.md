@@ -69,5 +69,7 @@ When parsing the boolean query, the parser will `panic!` if there is an error, r
 
 ## Next steps
 
+* fix the issue above
+* don't recompute jump table every time a text is queried, instead you should pre-calculate it when you create the match object
 * Case-insensitive matching.
-* Fuzzy-matching?
+* Documentation
