@@ -1,6 +1,14 @@
 [package]
-name = "bquery"
+name = "bqrs"
 version = "0.1.0"
 authors = ["Antony Southworth <southworthy@gmail.com>"]
+
+description = "apply boolean query to text"
+repository = "https://github.com/KyussCaesar/bq-rust"
+readme = "README.md"
+
+keywords = ["boolean", "text", "match", "query", "search"]
+
+license = "CC-BY-4.0"
 
 [dependencies]

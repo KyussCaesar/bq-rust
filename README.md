@@ -1,4 +1,4 @@
-# bq-rust
+# bqrs
 
 This is a library for applying a boolean query to text.
 
