@@ -49,8 +49,15 @@ fn match_bquery(query: &parser::Node, s: &str) -> bool
 /// `s2`: The text to search for s1 in.
 fn kmp(table: &Vec<i64>, s1: &str, s2: &str) -> bool
 {
-    let s1 = s1.to_string().into_bytes();
-    let s2 = s2.to_string().into_bytes();
+    let s1 = s1
+        .to_string()
+        .to_lowercase()
+        .into_bytes();
+
+    let s2 = s2
+        .to_string()
+        .to_lowercase()
+        .into_bytes();
 
     let mut i: i64 = 0;
     let mut j: i64 = -1;
@@ -101,5 +108,14 @@ mod tests
         let greeting = Matcher::from("(\"hello\" | \"hi\") & \"there\")").unwrap();
         print_on_failure(&greeting, "hi there, my name is Kyuss Caesar");
         print_on_failure(&greeting, "hello there, this should also be a greeting");
+    }
+
+    #[test]
+    fn casesens()
+    {
+        let greeting = Matcher::from("('hello'|'hi'|'ho') & 'there'").unwrap();
+        print_on_failure(&greeting, "HELLO THERE");
+        print_on_failure(&greeting, "hI THERE");
+        print_on_failure(&greeting, "Hi there!");
     }
 }

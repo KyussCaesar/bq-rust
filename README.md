@@ -67,8 +67,6 @@ assert!(complexq.query("that and these with those"));
 
 ## TODOs
 
-* Single-quotes.
-* Case-insensitive matching.
 * Documentation.
 * More tests.
 * Visualise query as a graph by outputting dot-language files.
