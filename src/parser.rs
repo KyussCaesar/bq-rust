@@ -1,11 +1,32 @@
+//! The parser builds up a query in memory as a query object.
+//!
+//! Query objects are a tree made up of nodes and allow the query to be matched against the text
+//! using relatively simple rules.
+//!
+//! # Matching rules:
+//!
+//! A query is built up as a tree.
+//! A query is considered to match the text if all nodes in the tree match.
+//!
+//! * A leaf node matches if the string associated with the node is in the text.
+//! * An AND node matches if *both* its left *and* right children match.
+//! * An OR node matches if *either* its left *or* right children match.
+//! * A NOT node matches if it's child node *doesn't* match.
+
 use std::collections::VecDeque;
 
+/// Represents a node in the internal string.
 pub enum Node
 {
     AND(Box<Node>, Box<Node>),
     OR(Box<Node>, Box<Node>),
     NOT(Box<Node>),
-    Leaf(String)
+
+    /// The Leaf nodes are the keywords to search for in the text.
+    ///
+    /// String: The keyword to search for.
+    /// Vec<i64>: The (precomputed) jump table for the Knuth-Morris-Pratt algorithm.
+    Leaf(String, Vec<i64>)
 }
 
 #[derive(Debug)]
@@ -19,12 +40,30 @@ enum Token
     Keyword(String),
 }
 
-pub fn from(s: &str) -> Node
+/// Represents an error in parsing the query.
+#[derive(Debug)] pub struct ParsingError(&'static str);
+
+// pub enum Result<T>
+// {
+//     Ok(T),
+//     Err(ParsingError),
+// }
+
+pub type Result<T> = ::std::result::Result<T, ParsingError>;
+
+/// Constructs a new query object from string.
+///
+/// Returns a ParsingError if the query is malformed.
+pub fn from(s: &str) -> Result<Node>
 {
-    return build_bquery(tokenise_query(s.to_string()));
+    match tokenise_query(s.to_string())
+    {
+        Ok(ts) => return build_bquery(ts),
+        Err(e) => return Err(e),
+    }
 }
 
-fn tokenise_query(query: String) -> VecDeque<Token>
+fn tokenise_query(query: String) -> Result<VecDeque<Token>>
 {
     let mut query = query.chars();
     let mut tokens: VecDeque<Token> = VecDeque::new();
@@ -59,7 +98,7 @@ fn tokenise_query(query: String) -> VecDeque<Token>
 
                 'a'...'z' | 'A'...'Z' =>
                 {
-                    panic!("found a letter when none was expected");
+                    return Err(ParsingError("Found an alphabetic character when either a quote, parenthesis, or operator was expected"));
                 },
 
                 '&' => tokens.push_back(Token::AND),
@@ -71,92 +110,167 @@ fn tokenise_query(query: String) -> VecDeque<Token>
                 // skip whitespace
                 ' ' | '\t' | '\n' | '\r' => continue,
 
-                _ => panic!("found an unexpected character: {}", c),
+                _ => return Err(ParsingError("found an unexpected character")),
             }
         }
     }
 
-    return tokens;
+    return Ok(tokens);
 }
 
-fn build_bquery(mut tokens: VecDeque<Token>) -> Node
+fn build_bquery(mut tokens: VecDeque<Token>) -> Result<Node>
 {
-    return build_expression(&mut tokens);
+    return build_query(&mut tokens);
 }
 
-fn build_expression(tokens: &mut VecDeque<Token>) -> Node
+fn build_query(tokens: &mut VecDeque<Token>) -> Result<Node>
 {
-    let mut left = build_term(tokens);
-    while let Some(t) = tokens.pop_front()
+    match build_or_group(tokens)
     {
-        if let Token::OR = t
+        Ok(mut left) =>
         {
-            let right = build_term(tokens);
-            left = Node::OR(Box::new(left), Box::new(right));
-        }
-        
-        else
-        {
-            tokens.push_front(t);
-            return left;
-        }
-    }
-
-    return left;
-}
-
-fn build_term(tokens: &mut VecDeque<Token>) -> Node
-{
-    let mut left = build_factor(tokens);
-    while let Some(t) = tokens.pop_front()
-    {
-        if let Token::AND = t
-        {
-            let right = build_factor(tokens);
-            left = Node::AND(Box::new(left), Box::new(right));
-        }
-
-        else
-        {
-            tokens.push_front(t);
-            return left;
-        }
-    }
-
-    return left;
-}
-
-fn build_factor(tokens: &mut VecDeque<Token>) -> Node
-{
-    use self::Token::*;
-    if let Some(t) = tokens.pop_front()
-    {
-        match t
-        {
-            NOT => return Node::NOT(Box::new(build_factor(tokens))),
-            Keyword(s) => return Node::Leaf(s),
-            LParen =>
+            while let Some(t) = tokens.pop_front()
             {
-                let expr = build_expression(tokens);
-                if let Some(Token::RParen) = tokens.pop_front()
+                if let Token::OR = t
                 {
-                    return expr;
+                    match build_or_group(tokens)
+                    {
+                        Ok(mut right) => left = Node::OR(Box::new(left), Box::new(right)),
+                        Err(e) => return Err(e),
+                    }
                 }
 
                 else
                 {
-                    panic!("ERROR! Expected closing parentheses after expression");
+                    tokens.push_front(t);
+                    return Ok(left);
+                }
+            }
+
+            return Ok(left);
+        },
+
+        Err(e) => return Err(e),
+    }
+}
+
+fn build_or_group(tokens: &mut VecDeque<Token>) -> Result<Node>
+{
+    match build_and_group(tokens)
+    {
+        Ok(mut left) =>
+        {
+            while let Some(t) = tokens.pop_front()
+            {
+                if let Token::AND = t
+                {
+                    match build_and_group(tokens)
+                    {
+                        Ok(mut right) => left = Node::AND(Box::new(left), Box::new(right)),
+                        Err(e) => return Err(e),
+                    }
+                }
+
+                else
+                {
+                    tokens.push_front(t);
+                    return Ok(left);
+                }
+            }
+
+            return Ok(left);
+        },
+
+        Err(e) => return Err(e),
+    }
+}
+
+fn build_and_group(tokens: &mut VecDeque<Token>) -> Result<Node>
+{
+    use self::Token::*;
+
+    if let Some(t) = tokens.pop_front()
+    {
+        match t
+        {
+            NOT =>
+            {
+                match build_and_group(tokens)
+                {
+                    Ok(node) => return Ok(Node::NOT(Box::new(node))),
+                    Err(e) => return Err(e),
                 }
             },
 
-            _ => panic!("ERROR! Unexpected token {:?}", t),
+            Keyword(s) =>
+            {
+                let table = kmp_table(&s.clone().into_bytes());
+                return Ok(Node::Leaf(s, table));
+            },
+
+            LParen =>
+            {
+                let expr = match build_query(tokens)
+                {
+                    Ok(expr) => expr,
+                    Err(e) => return Err(e),
+                };
+
+                if let Some(Token::RParen) = tokens.pop_front()
+                {
+                    return Ok(expr);
+                }
+
+                else
+                {
+                    return Err(ParsingError("Expected closing parentheses after expression"));
+                }
+            },
+
+            _ => return Err(ParsingError("Unexpected token ")),
         }
     }
 
     else
     {
-        panic!("ERROR! Unexpected end of input");
+        return Err(ParsingError("Unexpected end of input"));
     }
+}
+
+/// Computes the jump table for the Knuth-Morris-Pratt algorithm.
+fn kmp_table(s1: &Vec<u8>) -> Vec<i64>
+{
+    let mut i: i64 = 1;
+    let mut j: i64 = -1;
+
+    // Using {vec::with_capacity, vec::reserve, vec::reserve_exact} didn't work, so this is what I
+    // resorted to.
+    let mut next: Vec<i64> = Vec::new();
+    for _ in s1
+    {
+        next.push(0);
+    }
+
+    next[0] = -1;
+
+    while i < s1.len() as i64
+    {
+        while (j > -1) && (s1[(j+1) as usize] != s1[(j+1) as usize])
+        {
+            j = next[j as usize];
+        }
+
+        if s1[i as usize] == s1[(j+1) as usize]
+        {
+            j += 1;
+        }
+
+        next[i as usize] = j;
+
+        i += 1;
+    }
+
+    return next;
 }
 
 #[cfg(test)]
@@ -166,7 +280,7 @@ mod tests
 
     fn do_both(s: String)
     {
-        build_bquery(tokenise_query(s));
+        build_bquery(tokenise_query(s).unwrap()).unwrap();
     }
 
     #[test]

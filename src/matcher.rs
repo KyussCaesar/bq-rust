@@ -1,5 +1,6 @@
 use parser;
 
+/// The matcher struct holds a single query object.
 pub struct Matcher
 {
     query: parser::Node
@@ -7,20 +8,26 @@ pub struct Matcher
 
 impl Matcher
 {
-    pub fn from(s: &str) -> Self
+    /// Constructs a new Matcher object from a string.
+    ///
+    /// Returns a ParsingError if it fails.
+    pub fn from(s: &str) -> parser::Result<Self>
     {
-        Matcher
+        match parser::from(s)
         {
-            query: parser::from(s)
+            Ok(q) => return Ok(Matcher { query: q }),
+            Err(e) => return Err(e),
         }
     }
 
+    /// Applies the query to the string.
     pub fn query(&self, s: &str) -> bool
     {
         return match_bquery(&self.query, s)
     }
 }
 
+/// Applies `query` to `s`.
 fn match_bquery(query: &parser::Node, s: &str) -> bool
 {
     use parser::Node::*;
@@ -29,18 +36,21 @@ fn match_bquery(query: &parser::Node, s: &str) -> bool
         &AND(ref a, ref b) => return match_bquery(&*a, s) && match_bquery(&*b, s),
         &OR(ref a, ref b) => return match_bquery(&*a, s) || match_bquery(&*b, s),
         &NOT(ref a) => return !match_bquery(&*a, s),
-        &Leaf(ref keyword) => return kmp(keyword, s),
+        &Leaf(ref keyword, ref jumptable) => return kmp(jumptable, keyword, s),
     }
 }
 
-// implementation of knuth-morris-pratt
-// returns true if s1 is in s2
-fn kmp(s1: &str, s2: &str) -> bool
+/// An implementation of the [Knuth-Morris-Pratt](https://en.wikipedia.org/wiki/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm) algorithm.
+/// I didn't come up with this, it is taken from a C implementation that I found elsewhere.
+///
+/// Parameters:
+/// `table`: The precomputed jump table.
+/// `s1`: The string to search for.
+/// `s2`: The text to search for s1 in.
+fn kmp(table: &Vec<i64>, s1: &str, s2: &str) -> bool
 {
     let s1 = s1.to_string().into_bytes();
     let s2 = s2.to_string().into_bytes();
-
-    let table = kmp_table(&s1);
 
     let mut i: i64 = 0;
     let mut j: i64 = -1;
@@ -68,39 +78,6 @@ fn kmp(s1: &str, s2: &str) -> bool
     return false;
 }
 
-fn kmp_table(s1: &Vec<u8>) -> Vec<i64>
-{
-    let mut i: i64 = 1;
-    let mut j: i64 = -1;
-
-    let mut next: Vec<i64> = Vec::new();
-    for _num in s1
-    {
-        next.push(0);
-    }
-
-    next[0] = -1;
-
-    while i < s1.len() as i64
-    {
-        while (j > -1) && (s1[(j+1) as usize] != s1[(j+1) as usize])
-        {
-            j = next[j as usize];
-        }
-
-        if s1[i as usize] == s1[(j+1) as usize]
-        {
-            j += 1;
-        }
-
-        next[i as usize] = j;
-
-        i += 1;
-    }
-
-    return next;
-}
-
 #[cfg(test)]
 mod tests
 {
@@ -114,14 +91,14 @@ mod tests
     #[test]
     fn test()
     {
-        let iphonex = Matcher::from("\"iphone\" | \"i phone\"");
+        let iphonex = Matcher::from("\"iphone\" | \"i phone\"").unwrap();
         print_on_failure(&iphonex, "I love my new iphone!");
     }
 
     #[test]
     fn groups()
     {
-        let greeting = Matcher::from("(\"hello\" | \"hi\") & \"there\")");
+        let greeting = Matcher::from("(\"hello\" | \"hi\") & \"there\")").unwrap();
         print_on_failure(&greeting, "hi there, my name is Kyuss Caesar");
         print_on_failure(&greeting, "hello there, this should also be a greeting");
     }

@@ -1,6 +1,8 @@
 # bqrs
 
-This is a library for applying a boolean query to text.
+This is a library for applying a boolean filter to text.
+
+visit me on [crates.io](https://crates.io/crates/bqrs)
 
 ## Example:
 
@@ -36,7 +38,7 @@ Uses an implementation of the Knuth-Morris-Pratt algorithm (that I shamelessly c
 
 ### In pseudo-BNF language:
 
-```
+``` bnf
 query:
     or-group ( '|' or-group )*
 
@@ -57,19 +59,14 @@ Use '&' for AND, '|' for OR, '!' for NOT. NOT has highest precedence, then AND, 
 
 You can use '(' and ')' for grouping.
 
-```
+``` rust
 let complexq = Matcher::from(" \"that\" & ( \"this\" | \"these\" ) & \"those\" ");
 assert!(complexq.query("that and this with those"));
 assert!(complexq.query("that and these with those"));
 ```
 
-## Issues
+## TODOs
 
-When parsing the boolean query, the parser will `panic!` if there is an error, rather than simply reporting to the user.
-
-## Next steps
-
-* fix the issue above
-* don't recompute jump table every time a text is queried, instead you should pre-calculate it when you create the match object
+* Single-quotes
 * Case-insensitive matching.
-* Documentation
+* Documentation.
