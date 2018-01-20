@@ -11,11 +11,11 @@ extern crate bq_rust;
 
 use bq_rust::Matcher;
 
-let greeting = Matcher::from("\"hello\" | \"hi\"");
+let greeting = Matcher::from("'hello' | 'hi'");
 assert!(greeting.query("hi there!"));
 assert!(greeting.query("hello i am here"));
 
-let greet2 = Matcher::from("(\"hello\" | \"hi\" ) \"there\"");
+let greet2 = Matcher::from("('hello' | 'hi' ) 'there'");
 assert!(greet2.query("hello there!"));
 assert!(greet2.query("hi there!"));
 ```
@@ -51,7 +51,7 @@ and-group:
     '(' query ')'
 ```
 
-Where `STRINGLITERAL` is any ASCII character enclosed in double quotes.
+Where `STRINGLITERAL` is any ASCII character sequence enclosed in quotes.
 
 ### In English
 
@@ -60,7 +60,7 @@ Use '&' for AND, '|' for OR, '!' for NOT. NOT has highest precedence, then AND, 
 You can use '(' and ')' for grouping.
 
 ``` rust
-let complexq = Matcher::from(" \"that\" & ( \"this\" | \"these\" ) & \"those\" ");
+let complexq = Matcher::from(" 'that' & ( 'this' | 'these' ) & 'those' ");
 assert!(complexq.query("that and this with those"));
 assert!(complexq.query("that and these with those"));
 ```

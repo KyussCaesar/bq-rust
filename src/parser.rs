@@ -70,30 +70,42 @@ fn tokenise_query(query: String) -> Result<VecDeque<Token>>
 
     // persistent state
     let mut quotes = false;
+    let mut quotechar = '"';
+    let mut backslash = false;
     let mut current_token = String::new();
 
     while let Some(c) = query.next()
     {
         if quotes
         {
-            if c == '"'
+            if c == '\\'
+            {
+                backslash = true;
+            }
+
+            else if c == quotechar && !backslash
             {
                 tokens.push_back(Token::Keyword(current_token));
                 current_token = String::new();
                 quotes = false;
             }
 
-            else { current_token.push(c); }
+            else
+            {
+                current_token.push(c);
+                backslash = false;
+            }
         }
 
         else
         {
             match c
             {
-                '"' =>
+                '"' | '\'' =>
                 {
                     current_token = String::new();
                     quotes = true;
+                    quotechar = c;
                 },
 
                 'a'...'z' | 'A'...'Z' =>
@@ -300,5 +312,11 @@ mod tests
     fn whitespace()
     {
         do_both("\"iphone\" | \"i phone\"".to_string());
+    }
+
+    #[test]
+    fn singles()
+    {
+        do_both("'iphone' | 'iphone'".to_string());
     }
 }
